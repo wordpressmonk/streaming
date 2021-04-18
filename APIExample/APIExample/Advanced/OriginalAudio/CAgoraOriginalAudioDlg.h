@@ -68,6 +68,10 @@ public:
 		False: The buffer data in the AudioFrame is invalid and will be discarded.
 	*/
 	virtual bool onPlaybackAudioFrameBeforeMixing(unsigned int uid, AudioFrame& audioFrame);
+	void AgoraNDISend1(AudioFrame& audioFrame);
+	void AgoraNDISend2(AudioFrame& audioFrame);
+	void AgoraNDISend3(AudioFrame& audioFrame);
+
 private:
 	NDIlib_send_instance_t pNDI_send;
 };
