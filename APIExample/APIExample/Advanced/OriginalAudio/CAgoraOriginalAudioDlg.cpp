@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include <algorithm>
 #include "APIExample.h"
 #include "CAgoraOriginalAudioDlg.h"
 
@@ -93,23 +94,131 @@ static int bfsize(unsigned char* s)
 
 bool COriginalAudioProcFrameObserver::onPlaybackAudioFrame(AudioFrame& audioFrame)
 {
-	NDIlib_audio_frame_v2_t NDI_audio_frame;
-	NDI_audio_frame.sample_rate = audioFrame.samplesPerSec;
-	NDI_audio_frame.no_channels = audioFrame.channels;
-	NDI_audio_frame.no_samples = audioFrame.samples;
-	NDI_audio_frame.channel_stride_in_bytes = audioFrame.samples * audioFrame.bytesPerSample;
+	if (pNDI_send)
+	{
+		NDIlib_audio_frame_v2_t NDI_audio_frame;
+		NDI_audio_frame.sample_rate = audioFrame.samplesPerSec;
+		NDI_audio_frame.no_channels = audioFrame.channels;
+		NDI_audio_frame.no_samples = audioFrame.samples;
+		NDI_audio_frame.channel_stride_in_bytes = audioFrame.samples * sizeof(float);
 
-	NDI_audio_frame.p_data = (float*)malloc(audioFrame.channels * NDI_audio_frame.channel_stride_in_bytes);
-	memcpy((void*)NDI_audio_frame.p_data, (unsigned char*)audioFrame.buffer, NDI_audio_frame.channel_stride_in_bytes + 1);
+		NDI_audio_frame.p_data = (float*)malloc(audioFrame.channels * NDI_audio_frame.channel_stride_in_bytes + 1);
 
-	char msg[256];
-	sprintf_s(msg, 256, "\nSending NDI frames ( channels=%d ; samples=%d ; strides=%d ; content:%d)...\n", 
-		audioFrame.channels, audioFrame.samples, NDI_audio_frame.channel_stride_in_bytes, 
-		        bfsize((unsigned char*)audioFrame.buffer));
-	OutputDebugStringA(msg);
+		int bsize = bfsize((unsigned char*)audioFrame.buffer);
+		std::copy((float *)audioFrame.buffer, (float *)audioFrame.buffer + bsize, NDI_audio_frame.p_data);
 
-	NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
-	free(NDI_audio_frame.p_data);
+		/*
+		// memcpy((void*)NDI_audio_frame.p_data, (unsigned char*)audioFrame.buffer, NDI_audio_frame.channel_stride_in_bytes + 1);
+
+		float * p_ch = (float*)((uint8_t*)NDI_audio_frame.p_data);
+
+		int sample_no = 0;
+		;;
+
+		for (int sample_no = 0; sample_no < bsize; sample_no++)
+			p_ch[sample_no] = *audioFrame.buffer[sample_no];
+
+
+		for (int sample_no = 0; sample_no < audioFrame.samples; sample_no++)
+			p_ch[sample_no] = 0.0f;
+
+		*/
+
+		char msg[256];
+		sprintf_s(msg, 256, "\nSending NDI frames ( channels=%d ; samples=%d ; strides=%d ; content:%d)...\n",
+			audioFrame.channels, audioFrame.samples, NDI_audio_frame.channel_stride_in_bytes,
+			bfsize((unsigned char*)audioFrame.buffer));
+		OutputDebugStringA(msg);
+
+		NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
+
+		/*
+		for (int idx = 0; idx < 100; idx++)
+		{
+			for (int ch = 0; ch < audioFrame.channels; ch++)
+			{	// Get the pointer to the start of this channel
+				float* p_ch = (float*)((uint8_t*)NDI_audio_frame.p_data + ch * NDI_audio_frame.channel_stride_in_bytes);
+
+				// Fill it with silence
+				for (int sample_no = 0; sample_no < audioFrame.samples; sample_no++)
+					p_ch[sample_no] = 0.0f;
+			}
+
+			NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
+
+			// Just display something helpful
+
+			char msg[256];
+			sprintf_s(msg, 256, "Frame number %d sent.\n", idx);
+			OutputDebugStringA(msg);
+		}
+
+		*/
+
+		/*
+		NDIlib_audio_frame_v2_t NDI_audio_frame;
+		NDI_audio_frame.sample_rate = audioFrame.samplesPerSec;
+		NDI_audio_frame.no_channels = audioFrame.channels;
+		NDI_audio_frame.no_samples = audioFrame.samples;
+		NDI_audio_frame.channel_stride_in_bytes = audioFrame.samples * audioFrame.bytesPerSample;
+
+		NDI_audio_frame.p_data = (float*)malloc(audioFrame.channels * NDI_audio_frame.channel_stride_in_bytes);
+		memcpy((void*)NDI_audio_frame.p_data, (unsigned char*)audioFrame.buffer, NDI_audio_frame.channel_stride_in_bytes + 1);
+
+
+		char msg[256];
+		sprintf_s(msg, 256, "\nSending NDI frames ( channels=%d ; samples=%d ; strides=%d ; content:%d)...\n",
+			audioFrame.channels, audioFrame.samples, NDI_audio_frame.channel_stride_in_bytes,
+					bfsize((unsigned char*)audioFrame.buffer));
+		OutputDebugStringA(msg);
+
+		NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
+
+		*/
+
+
+		/*
+
+		// TEST -START
+
+		// We are going to send 1920 audio samples at a time
+		NDIlib_audio_frame_v2_t NDI_audio_frame;
+		NDI_audio_frame.sample_rate = 48000;
+		NDI_audio_frame.no_channels = 4;
+		NDI_audio_frame.no_samples = 1920;
+		NDI_audio_frame.p_data = (float*)malloc(1920 * 4 * sizeof(float));
+		NDI_audio_frame.channel_stride_in_bytes = 1920 * sizeof(float);
+
+		// We will send 1000 frames of video.
+		for (int idx = 0; idx < 100; idx++)
+		{	// Fill in the buffer with silence. It is likely that you would do something much smarter than this.
+			for (int ch = 0; ch < 4; ch++)
+			{	// Get the pointer to the start of this channel
+				float* p_ch = (float*)((uint8_t*)NDI_audio_frame.p_data + ch * NDI_audio_frame.channel_stride_in_bytes);
+
+				// Fill it with silence
+				for (int sample_no = 0; sample_no < 1920; sample_no++)
+					p_ch[sample_no] = 0.0f;
+			}
+
+			// We now submit the frame. Note that this call will be clocked so that we end up submitting
+			// at exactly 48kHz
+
+			NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
+
+			// Just display something helpful
+
+			char msg[256];
+			sprintf_s(msg, 256, "Frame number %d sent.\n", idx);
+			OutputDebugStringA(msg);
+
+		}
+		*/
+
+		free(NDI_audio_frame.p_data);
+
+
+	}
 
 	return true;
 }
