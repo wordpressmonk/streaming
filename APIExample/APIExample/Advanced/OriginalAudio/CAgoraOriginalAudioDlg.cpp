@@ -2,7 +2,7 @@
 #include "APIExample.h"
 #include "CAgoraOriginalAudioDlg.h"
 
-
+# pragma comment(lib, "Processing.NDI.Lib.x86.lib")
 
 IMPLEMENT_DYNAMIC(CAgoraOriginalAudioDlg, CDialogEx)
 
@@ -83,8 +83,34 @@ bool COriginalAudioProcFrameObserver::onRecordAudioFrame(AudioFrame& audioFrame)
 	True: Buffer data in AudioFrame is valid, the data will be sent;
 	False: The buffer data in the AudioFrame is invalid and will be discarded.
 */
+
+static int bfsize(unsigned char* s)
+{
+	unsigned char* t;
+	for (t = s; *t != '\0'; t++);
+	return t - s;
+}
+
 bool COriginalAudioProcFrameObserver::onPlaybackAudioFrame(AudioFrame& audioFrame)
 {
+	NDIlib_audio_frame_v2_t NDI_audio_frame;
+	NDI_audio_frame.sample_rate = audioFrame.samplesPerSec;
+	NDI_audio_frame.no_channels = audioFrame.channels;
+	NDI_audio_frame.no_samples = audioFrame.samples;
+	NDI_audio_frame.channel_stride_in_bytes = audioFrame.samples * audioFrame.bytesPerSample;
+
+	NDI_audio_frame.p_data = (float*)malloc(audioFrame.channels * NDI_audio_frame.channel_stride_in_bytes);
+	memcpy((void*)NDI_audio_frame.p_data, (unsigned char*)audioFrame.buffer, NDI_audio_frame.channel_stride_in_bytes + 1);
+
+	char msg[256];
+	sprintf_s(msg, 256, "\nSending NDI frames ( channels=%d ; samples=%d ; strides=%d ; content:%d)...\n", 
+		audioFrame.channels, audioFrame.samples, NDI_audio_frame.channel_stride_in_bytes, 
+		        bfsize((unsigned char*)audioFrame.buffer));
+	OutputDebugStringA(msg);
+
+	NDIlib_send_send_audio_v2(pNDI_send, &NDI_audio_frame);
+	free(NDI_audio_frame.p_data);
+
 	return true;
 }
 /*

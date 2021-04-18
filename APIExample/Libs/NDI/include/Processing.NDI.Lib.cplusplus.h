@@ -42,12 +42,13 @@ inline NDIlib_video_frame_v2_t::NDIlib_video_frame_v2_t(int xres_, int yres_, ND
 	: xres(xres_), yres(yres_), FourCC(FourCC_), frame_rate_N(frame_rate_N_), frame_rate_D(frame_rate_D_),
 	  picture_aspect_ratio(picture_aspect_ratio_), frame_format_type(frame_format_type_),
 	  timecode(timecode_), p_data(p_data_), line_stride_in_bytes(line_stride_in_bytes_), p_metadata(p_metadata_), timestamp(timestamp_) {}
-/*
+
 inline NDIlib_audio_frame_v2_t::NDIlib_audio_frame_v2_t(int sample_rate_, int no_channels_, int no_samples_, int64_t timecode_, float* p_data_, 
                                                         int channel_stride_in_bytes_, const char* p_metadata_, int64_t timestamp_)
 	: sample_rate(sample_rate_), no_channels(no_channels_), no_samples(no_samples_), timecode(timecode_),
 	  p_data(p_data_), channel_stride_in_bytes(channel_stride_in_bytes_), p_metadata(p_metadata_), timestamp(timestamp_) {}
 
+/*
 inline NDIlib_audio_frame_v3_t::NDIlib_audio_frame_v3_t(int sample_rate_, int no_channels_, int no_samples_, int64_t timecode_,
                                                         NDIlib_FourCC_audio_type_e FourCC_, uint8_t* p_data_, int channel_stride_in_bytes_,
                                                         const char* p_metadata_, int64_t timestamp_)
@@ -93,9 +94,12 @@ inline NDIlib_recv_queue_t::NDIlib_recv_queue_t(void)
 inline NDIlib_recv_recording_time_t::NDIlib_recv_recording_time_t(void)
 	: no_frames(0), start_time(0), last_time(0) {}
 
+*/
+
 inline NDIlib_send_create_t::NDIlib_send_create_t(const char* p_ndi_name_, const char* p_groups_, bool clock_video_, bool clock_audio_)
 	: p_ndi_name(p_ndi_name_), p_groups(p_groups_), clock_video(clock_video_), clock_audio(clock_audio_) {}
 
+/*
 inline NDIlib_find_create_t::NDIlib_find_create_t(bool show_local_sources_, const char* p_groups_, const char* p_extra_ips_)
 	: show_local_sources(show_local_sources_), p_groups(p_groups_), p_extra_ips(p_extra_ips_) {}
 

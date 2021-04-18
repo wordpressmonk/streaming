@@ -1,11 +1,36 @@
 ﻿#pragma once
 #include "AGVideoWnd.h"
 
+#include <stddef.h>
+#include "Processing.NDI.Lib.h"
+#include "Processing.NDI.Send.h"
+#include "Processing.NDI.Lib.cplusplus.h"
+
 
 class COriginalAudioProcFrameObserver :
 	public agora::media::IAudioFrameObserver
 {
 public:
+	COriginalAudioProcFrameObserver()
+	{
+		NDIlib_send_create_t NDI_send_create_desc;
+		NDI_send_create_desc.p_ndi_name = "Agora NDI Audio";
+		NDI_send_create_desc.clock_audio = true;
+		pNDI_send = NULL; 
+	
+		if (NDIlib_initialize())
+		{
+			pNDI_send = NDIlib_send_create(&NDI_send_create_desc);
+		}
+	}
+	virtual ~COriginalAudioProcFrameObserver()
+	{
+		if (pNDI_send)
+		{
+			NDIlib_send_destroy(pNDI_send);
+			NDIlib_destroy();
+		}
+	}
 	/*
 	*	According to the setting of audio collection frame rate,
 	*	the Agora SDK calls this callback function at an appropriate time
@@ -43,6 +68,8 @@ public:
 		False: The buffer data in the AudioFrame is invalid and will be discarded.
 	*/
 	virtual bool onPlaybackAudioFrameBeforeMixing(unsigned int uid, AudioFrame& audioFrame);
+private:
+	NDIlib_send_instance_t pNDI_send;
 };
 
 
