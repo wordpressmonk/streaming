@@ -280,23 +280,6 @@ static int bfsize(unsigned char* s)
 	return t - s;
 }
 
-static unsigned char* bfmerge(unsigned char* y, unsigned char* u, unsigned char* v)
-{
-	size_t yl = bfsize(y);
-	size_t ul = bfsize(u);
-	size_t vl = bfsize(v);
-
-	char msg[256];
-	sprintf_s(msg, 256, "\nybuffer=%d ; ubuffer=%d ; vbuffer=%d\n", yl, ul, vl);
-	LogMessage(msg);
-
-	unsigned char* w = (unsigned char*)malloc(yl + ul + vl + 1);
-	memcpy(w, y, yl);
-	memcpy(w + yl, u, ul);
-	memcpy(w + yl + ul, v, vl + 1);
-	return w;
-}
-
 //see the header file for details
 bool CGrayVideoProcFrameObserver::onCaptureVideoFrame(VideoFrame & videoFrame)
 {
@@ -310,110 +293,6 @@ bool CGrayVideoProcFrameObserver::onCaptureVideoFrame(VideoFrame & videoFrame)
 	return true;
 }
 
-bool CGrayVideoProcFrameObserver::sendNDIFrameExternalYUVFrame(VideoFrame& videoFrame)
-{
-	char msg[256];
-	sprintf_s(msg, 256, "Sending NDI Frame...\n");
-	LogMessage(msg);
-
-	bfmerge((unsigned char*)videoFrame.yBuffer,
-		(unsigned char*)videoFrame.uBuffer, (unsigned char*)videoFrame.vBuffer);
-
-	NDIlib_video_frame_v2_t NDI_video_frame;
-
-	// stefan_cif.yuv 352x288
-	// bear_320x192_180.nv12.yuv 320x192
-
-	NDI_video_frame.xres = 320;
-	NDI_video_frame.yres = 192;
-	NDI_video_frame.FourCC = NDIlib_FourCC_type_UYVY;
-	// NDI_video_frame.p_data = (uint8_t*)malloc(NDI_video_frame.xres * NDI_video_frame.yres * 4);
-
-	//std::ifstream t("bear_320x192_180.nv12.yuv");
-	//std::string str((std::istreambuf_iterator<char>(t)),
-		//std::istreambuf_iterator<char>());
-
-	std::ifstream in("bear_320x192_180.nv12.yuv", std::ios::in | std::ios::binary);
-	std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-
-	sprintf_s(msg, 256, "Len %d Frame...\n",strlen(str.c_str()));
-	LogMessage(msg);
-
-	NDI_video_frame.p_data = (uint8_t*)str.c_str();
-
-
-	using namespace std::chrono;
-	for (const auto start = high_resolution_clock::now(); high_resolution_clock::now() - start < minutes(5);)
-	{
-		const auto start_send = high_resolution_clock::now();
-
-		// Send 200 frames
-		for (int idx = 200; idx; idx--)
-		{   // Fill in the buffer. It is likely that you would do something much smarter than this.
-			//memset((void*)NDI_video_frame.p_data, (idx & 1) ? 255 : 0, NDI_video_frame.xres * NDI_video_frame.yres * 4);
-
-			sprintf_s(msg, 256, "Sending dup frames...\n");
-			LogMessage(msg);
-
-			// We now submit the frame. Note that this call will be clocked so that we end up submitting at exactly 29.97fps.
-			NDIlib_send_send_video_v2(pNDI_send, &NDI_video_frame);
-		}
-
-		// Just display something helpful
-		printf("200 frames sent, at %1.2ffps\n", 200.0f / duration_cast<duration<float>>(high_resolution_clock::now() - start_send).count());
-	}
-
-	// Free the video frame
-	free(NDI_video_frame.p_data);
-
-	return false;
-}
-
-
-bool CGrayVideoProcFrameObserver::sendNDIFrameNDIExample(VideoFrame& videoFrame)
-{
-	char msg[256];
-	sprintf_s(msg, 256, "Sending NDI Frame...\n");
-	LogMessage(msg);
-
-	bfmerge((unsigned char*)videoFrame.yBuffer,
-		(unsigned char*)videoFrame.uBuffer, (unsigned char*)videoFrame.vBuffer);
-
-	NDIlib_video_frame_v2_t NDI_video_frame;
-	NDI_video_frame.xres = 1920;
-	NDI_video_frame.yres = 1080;
-	NDI_video_frame.FourCC = NDIlib_FourCC_type_BGRX;
-	NDI_video_frame.p_data = (uint8_t*)malloc(NDI_video_frame.xres * NDI_video_frame.yres * 4);
-
-	using namespace std::chrono;
-	for (const auto start = high_resolution_clock::now(); high_resolution_clock::now() - start < minutes(5);)
-	{
-		const auto start_send = high_resolution_clock::now();
-
-		// Send 200 frames
-		for (int idx = 200; idx; idx--)
-		{   // Fill in the buffer. It is likely that you would do something much smarter than this.
-			memset((void*)NDI_video_frame.p_data, (idx & 1) ? 255 : 0, NDI_video_frame.xres * NDI_video_frame.yres * 4);
-
-			sprintf_s(msg, 256, "Sending dup frames...\n");
-			LogMessage(msg);
-
-			// We now submit the frame. Note that this call will be clocked so that we end up submitting at exactly 29.97fps.
-			NDIlib_send_send_video_v2(pNDI_send, &NDI_video_frame);
-		}
-
-		// Just display something helpful
-		printf("200 frames sent, at %1.2ffps\n", 200.0f / duration_cast<duration<float>>(high_resolution_clock::now() - start_send).count());
-	}
-
-	// Free the video frame
-	free(NDI_video_frame.p_data);
-
-	return false;
-}
-
-
-
 bool CGrayVideoProcFrameObserver::sendNDIFrameAgoraOutput(VideoFrame& videoFrame)
 {
 	if (pNDI_send)
@@ -423,23 +302,39 @@ bool CGrayVideoProcFrameObserver::sendNDIFrameAgoraOutput(VideoFrame& videoFrame
 		NDI_video_frame.yres = videoFrame.height;
 		NDI_video_frame.FourCC = NDIlib_FourCC_type_YV12;
 
-		//size_t p_size = (size_t)((videoFrame.height / 2) * videoFrame.yStride);
-		//NDI_video_frame.p_data = (uint8_t*)malloc(p_size);
+		unsigned char* ybuffer = (unsigned char*)videoFrame.yBuffer;
+		unsigned char* ubuffer = (unsigned char*)videoFrame.uBuffer;
+		unsigned char* vbuffer = (unsigned char*)videoFrame.vBuffer;
 
-		NDI_video_frame.p_data = 
-			bfmerge((unsigned char*)videoFrame.yBuffer,
-			(unsigned char*)videoFrame.uBuffer, (unsigned char*)videoFrame.vBuffer);
-
-		//unsigned char* yuv = bfmerge();
-		//memcpy((void*)NDI_video_frame.p_data, (const void*)videoFrame.yBuffer, p_size + 1);
+		size_t ybfsize = bfsize(ybuffer);
+		size_t ubfsize = bfsize(ubuffer);
+		size_t vbfsize = bfsize(vbuffer);
 
 		char msg[256];
-		sprintf_s(msg, 256, "Sending NDI Frame...\n");
-		LogMessage(msg);
+
+		sprintf_s(msg, 256, "\nCaptured Frame Frame ( ybuffer=%d ; ubuffer=%d ; vbuffer=%d)", ybfsize, ubfsize, vbfsize);
+		OutputDebugStringA(msg);
+
+		if (ybfsize < ubfsize * 2 || ybfsize <= videoFrame.width * videoFrame.height) 
+		{
+			sprintf_s(msg, 256, " [ REJECTED ]");
+			OutputDebugStringA(msg);
+			return true;
+		}
+
+		NDI_video_frame.p_data = (uint8_t*)malloc(ybfsize + ubfsize + vbfsize + 1);
+
+		memcpy(NDI_video_frame.p_data, ybuffer, ybfsize+1);
+		memcpy(NDI_video_frame.p_data + ybfsize, ubuffer, ubfsize);
+		memcpy(NDI_video_frame.p_data + ybfsize + ubfsize, vbuffer, vbfsize + 1);
+
+		sprintf_s(msg, 256, "\nSending NDI frames ( pdsize:%d)...\n", bfsize(NDI_video_frame.p_data));
+		OutputDebugStringA(msg);
 
 		NDIlib_send_send_video_v2(pNDI_send, &NDI_video_frame);
-		return true;
+		free(NDI_video_frame.p_data);
 
+		return true;
 	}
 	return false;
 }
